@@ -1,0 +1,1441 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Exodus - Secure Crypto Wallet</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- PWA Meta Tags -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Exodus">
+    
+    <style>
+        * { 
+            box-sizing: border-box; 
+            user-select: none; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation;
+        }
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, sans-serif; 
+            background-color: #0c0e15; 
+            color: #f8fafc;
+            margin: 0; 
+            padding: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            position: fixed;
+        }
+
+        /* SECURE PIN LOCK SCREEN */
+        #pin-lock-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: linear-gradient(180deg, #221838 0%, #0c0e15 100%);
+            z-index: 9999999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            transition: opacity 0.3s ease;
+        }
+        #pin-lock-screen.hidden { opacity: 0; pointer-events: none; display: none !important; }
+        
+        .pin-dots {
+            display: flex;
+            gap: 16px;
+            margin: 24px 0 36px 0;
+        }
+        .pin-dot {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.2);
+            transition: background 0.2s;
+        }
+        .pin-dot.filled {
+            background: #ffffff;
+            box-shadow: 0 0 10px rgba(255,255,255,0.6);
+        }
+
+        .pin-keypad {
+            display: grid;
+            grid-template-columns: repeat(3, 76px);
+            gap: 16px;
+        }
+        .pin-key {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .pin-key:active { background: rgba(147, 51, 234, 0.5); }
+
+        .app-container { 
+            width: 100%; 
+            height: 100%; 
+            background: linear-gradient(180deg, #221838 0%, #0c0e15 45%);
+            display: flex; 
+            flex-direction: column; 
+            position: absolute;
+            top: 0;
+            left: 0;
+            overflow: hidden;
+        }
+        .view-section { display: none; flex-direction: column; flex: 1; overflow-y: auto; padding: 16px; max-width: 500px; margin: 0 auto; width: 100%; box-sizing: border-box; padding-bottom: 120px; }
+        .view-section.active { display: flex; }
+
+        .app-top-nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px 4px 20px;
+            flex-shrink: 0;
+        }
+        .top-icon-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: none;
+            color: #ffffff;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        .logo-badge-btn {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            border: none;
+            color: #ffffff;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 900;
+            font-size: 12px;
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+        }
+
+        .portfolio-header-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 0 20px 0;
+            position: relative;
+        }
+        .ring-wrapper {
+            position: relative;
+            width: 190px;
+            height: 190px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .portfolio-ring-svg {
+            width: 190px;
+            height: 190px;
+            transform: rotate(-90deg);
+        }
+        .ring-bg { fill: none; stroke: rgba(255,255,255,0.08); stroke-width: 7; }
+        .ring-segment { fill: none; stroke-width: 7; stroke-linecap: round; transition: stroke-dasharray 0.5s ease; }
+        
+        .ring-center-content {
+            position: absolute;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 12px;
+            width: 100%;
+        }
+        .portfolio-total-val {
+            font-size: 22px;
+            font-weight: 900;
+            color: #ffffff;
+            letter-spacing: -0.5px;
+            word-break: break-all;
+        }
+
+        .action-pill-container {
+            display: flex;
+            gap: 12px;
+            justify-content: center;
+            margin: 4px 0 20px 0;
+        }
+        .exodus-btn {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.09);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #ffffff;
+            padding: 14px;
+            border-radius: 24px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+            text-align: center;
+            transition: background 0.2s;
+        }
+        .exodus-btn.primary {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            border: none;
+            box-shadow: 0 4px 15px rgba(168, 85, 247, 0.4);
+        }
+        .exodus-btn:hover { background: rgba(255, 255, 255, 0.15); }
+
+        .asset-card {
+            background: rgba(35, 28, 58, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: 16px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        .asset-card:hover { border-color: rgba(168, 85, 247, 0.5); }
+        .asset-left { display: flex; align-items: center; gap: 14px; }
+        .asset-icon { width: 38px; height: 38px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 15px; }
+        .asset-name { font-size: 15px; font-weight: 700; color: #f8fafc; }
+        .asset-sub { font-size: 12px; color: #a1a1aa; margin-top: 2px; }
+        .asset-right { text-align: right; }
+        .asset-bal { font-size: 15px; font-weight: 700; color: #f8fafc; }
+        .asset-fiat { font-size: 12px; color: #a1a1aa; margin-top: 2px; }
+
+        .bottom-nav {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 88%;
+            max-width: 380px;
+            background: rgba(30, 22, 50, 0.9);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 32px;
+            display: flex;
+            justify-content: space-around;
+            padding: 8px;
+            z-index: 999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+        }
+        .nav-icon-btn {
+            background: none;
+            border: none;
+            color: #a1a1aa;
+            font-size: 18px;
+            cursor: pointer;
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s, color 0.2s;
+        }
+        .nav-icon-btn.active {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            color: #ffffff;
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+        }
+
+        .coin-detail-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            margin-bottom: 10px;
+        }
+        .coin-badge-lg {
+            width: 52px;
+            height: 52px;
+            border-radius: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin: 0 auto 10px auto;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+        }
+        .timeframe-bar {
+            display: flex;
+            justify-content: space-around;
+            background: rgba(255,255,255,0.04);
+            padding: 4px;
+            border-radius: 20px;
+            margin: 16px 0;
+        }
+        .tf-pill {
+            font-size: 11px;
+            font-weight: 700;
+            color: #a1a1aa;
+            padding: 6px 10px;
+            border-radius: 14px;
+            cursor: pointer;
+        }
+        .tf-pill.active {
+            background: rgba(255,255,255,0.12);
+            color: #ffffff;
+        }
+        .coin-stats-row {
+            display: flex;
+            background: rgba(35, 28, 58, 0.75);
+            border: 1px solid rgba(255,255,255,0.06);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+        .coin-stat-col { flex: 1; }
+        .coin-stat-col:first-child { border-right: 1px solid rgba(255,255,255,0.08); }
+        
+        .coin-tabs {
+            display: flex;
+            gap: 24px;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            margin-bottom: 16px;
+            font-size: 13px;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+        .coin-tab { padding-bottom: 8px; color: #a1a1aa; cursor: pointer; border-bottom: 2px solid transparent; }
+        .coin-tab.active { color: #ffffff; border-bottom-color: #a855f7; }
+
+        .coin-action-bar {
+            position: absolute;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 420px;
+            background: rgba(30, 22, 50, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 36px;
+            display: flex;
+            justify-content: space-around;
+            padding: 10px;
+            z-index: 999;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+        }
+        .action-bar-btn {
+            background: none;
+            border: none;
+            color: #a1a1aa;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+        }
+        .action-bar-btn .icon-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.08);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: #ffffff;
+        }
+        .action-bar-btn.active-pill .icon-circle {
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            box-shadow: 0 4px 12px rgba(168, 85, 247, 0.4);
+        }
+        .action-bar-btn.active-pill span { color: #ffffff; }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(12,14,21,0.85); backdrop-filter: blur(10px); display: flex; align-items: flex-end; justify-content: center; z-index: 99999; }
+        .modal-overlay.hidden { display: none !important; }
+        .modal-box { background: #1e1535; border-top: 1px solid rgba(255,255,255,0.12); width: 100%; max-width: 500px; border-radius: 24px 24px 0 0; padding: 24px; max-height: 85vh; overflow-y: auto; box-shadow: 0 -20px 40px rgba(0,0,0,0.8); }
+        .modal-title { font-size: 16px; font-weight: 800; color: #ffffff; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; }
+
+        .input-group { margin-bottom: 14px; text-align: left; }
+        .input-label { font-size: 11px; font-weight: 700; color: #a1a1aa; margin-bottom: 6px; display: block; text-transform: uppercase; }
+        
+        .input-field { width: 100%; padding: 14px; background: rgba(12,14,21,0.8); border: 1px solid rgba(255,255,255,0.12); border-radius: 12px; font-size: 16px; color: white; outline: none; }
+
+        .slide-container {
+            background: rgba(168, 85, 247, 0.2);
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            border-radius: 30px;
+            height: 56px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            overflow: hidden;
+            touch-action: none;
+        }
+        .slide-thumb {
+            position: absolute;
+            left: 4px;
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #a855f7, #7c3aed);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            cursor: grab;
+        }
+        .slide-text { font-size: 14px; font-weight: 800; color: #d8b4fe; letter-spacing: 0.5px; }
+
+        #app-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-120px);
+            background: #281c48;
+            border: 1px solid rgba(168, 85, 247, 0.5);
+            color: #f8fafc;
+            font-weight: 700;
+            padding: 14px 24px;
+            border-radius: 20px;
+            font-size: 13px;
+            z-index: 999999;
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #app-toast.show { transform: translateX(-50%) translateY(0); }
+    </style>
+</head>
+<body>
+
+    <!-- SECURE PIN LOGIN GATE SCREEN -->
+    <div id="pin-lock-screen">
+        <div style="background: linear-gradient(135deg, #a855f7, #7c3aed); width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 18px; box-shadow: 0 8px 20px rgba(168,85,247,0.5); margin-bottom: 12px;">E3</div>
+        <div style="font-size: 18px; font-weight: 800; color: #ffffff;">Secured Wallet</div>
+        <div style="font-size: 13px; color: #a1a1aa; margin-top: 4px;" id="pin-prompt-text">Enter your passcode.</div>
+
+        <div class="pin-dots">
+            <div class="pin-dot" id="dot-0"></div>
+            <div class="pin-dot" id="dot-1"></div>
+            <div class="pin-dot" id="dot-2"></div>
+            <div class="pin-dot" id="dot-3"></div>
+            <div class="pin-dot" id="dot-4"></div>
+            <div class="pin-dot" id="dot-5"></div>
+        </div>
+
+        <div class="pin-keypad">
+            <button class="pin-key" onclick="pressPin('1')">1</button>
+            <button class="pin-key" onclick="pressPin('2')">2</button>
+            <button class="pin-key" onclick="pressPin('3')">3</button>
+            <button class="pin-key" onclick="pressPin('4')">4</button>
+            <button class="pin-key" onclick="pressPin('5')">5</button>
+            <button class="pin-key" onclick="pressPin('6')">6</button>
+            <button class="pin-key" onclick="pressPin('7')">7</button>
+            <button class="pin-key" onclick="pressPin('8')">8</button>
+            <button class="pin-key" onclick="pressPin('9')">9</button>
+            <div style="visibility: hidden;"></div>
+            <button class="pin-key" onclick="pressPin('0')">0</button>
+            <button class="pin-key" onclick="pressPin('del')">✕</button>
+        </div>
+    </div>
+
+    <div id="app-toast">
+        <span id="toast-icon" style="font-size: 16px;">✅</span>
+        <span id="toast-msg">Transaction successful</span>
+    </div>
+
+    <div class="app-container">
+        
+        <!-- VIEW 1: PORTFOLIO MAIN -->
+        <div class="view-section active" id="view-portfolio">
+            <div class="app-top-nav">
+                <button class="logo-badge-btn">E3</button>
+                <div style="display: flex; gap: 8px;">
+                    <button class="top-icon-btn" onclick="openSearchModal()">🔍</button>
+                    <button class="top-icon-btn" onclick="openActivityHistoryModal()">🕒</button>
+                </div>
+            </div>
+
+            <div class="portfolio-header-container">
+                <div class="ring-wrapper">
+                    <svg class="portfolio-ring-svg" viewBox="0 0 120 120">
+                        <circle class="ring-bg" cx="60" cy="60" r="52"></circle>
+                        <circle id="ring-btc" class="ring-segment" cx="60" cy="60" r="52" stroke="#f7931a" stroke-dasharray="0 326"></circle>
+                        <circle id="ring-eth" class="ring-segment" cx="60" cy="60" r="52" stroke="#a855f7" stroke-dasharray="0 326" stroke-dashoffset="0"></circle>
+                        <circle id="ring-plu" class="ring-segment" cx="60" cy="60" r="52" stroke="#ec4899" stroke-dasharray="0 326" stroke-dashoffset="0"></circle>
+                        <circle id="ring-usdt" class="ring-segment" cx="60" cy="60" r="52" stroke="#22c55e" stroke-dasharray="0 326" stroke-dashoffset="0"></circle>
+                    </svg>
+                    <div class="ring-center-content">
+                        <div class="portfolio-total-val" id="portfolio-main-val">$1,365,696.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="action-pill-container">
+                <button class="exodus-btn" onclick="openReceiveModal()">Receive</button>
+                <div style="color: #71717a; display: flex; align-items: center; font-size: 12px; font-weight: bold;">or</div>
+                <button class="exodus-btn primary" onclick="openSendModal()">Send / Transfer</button>
+            </div>
+
+            <div class="section-header" style="font-size: 11px; font-weight: 800; color: #a1a1aa; text-transform: uppercase; margin-bottom: 8px;">Portfolio Assets</div>
+
+            <div class="asset-card" onclick="openCoinDetail('BTC')">
+                <div class="asset-left">
+                    <div class="asset-icon" style="color: #f7931a; background: rgba(247, 147, 26, 0.12);">₿</div>
+                    <div>
+                        <div class="asset-name">Bitcoin</div>
+                        <div class="asset-sub" id="btc-sub-bal">17.0000 BTC</div>
+                    </div>
+                </div>
+                <div class="asset-right">
+                    <div class="asset-bal" id="btc-fiat-bal">$1,289,824.00</div>
+                    <div class="asset-fiat" id="btc-change-disp" style="color: #22c55e;">+2.4%</div>
+                </div>
+            </div>
+
+            <div class="asset-card" onclick="openCoinDetail('ETH')">
+                <div class="asset-left">
+                    <div class="asset-icon" style="color: #a855f7; background: rgba(168, 85, 247, 0.12);">Ξ</div>
+                    <div>
+                        <div class="asset-name">Ethereum</div>
+                        <div class="asset-sub" id="eth-sub-bal">33.902 ETH</div>
+                    </div>
+                </div>
+                <div class="asset-right">
+                    <div class="asset-bal" id="eth-fiat-bal">$75,872.00</div>
+                    <div class="asset-fiat" id="eth-change-disp" style="color: #ef4444;">-0.9%</div>
+                </div>
+            </div>
+
+            <div class="asset-card" onclick="openCoinDetail('PLU')">
+                <div class="asset-left">
+                    <div class="asset-icon" style="color: #ec4899; background: rgba(236, 72, 153, 0.12);">⬡</div>
+                    <div>
+                        <div class="asset-name">Plutonium</div>
+                        <div class="asset-sub" id="plu-sub-bal">0.00 PLU</div>
+                    </div>
+                </div>
+                <div class="asset-right">
+                    <div class="asset-bal" id="plu-fiat-bal">$0.00</div>
+                    <div class="asset-fiat" style="color: #22c55e;">+12.5%</div>
+                </div>
+            </div>
+
+            <div class="asset-card" onclick="openCoinDetail('USDT')">
+                <div class="asset-left">
+                    <div class="asset-icon" style="color: #22c55e; background: rgba(34, 197, 94, 0.12);">₮</div>
+                    <div>
+                        <div class="asset-name">Tether USD</div>
+                        <div class="asset-sub" id="usdt-sub-bal">0.00 USDT</div>
+                    </div>
+                </div>
+                <div class="asset-right">
+                    <div class="asset-bal" id="usdt-fiat-bal">$0.00</div>
+                    <div class="asset-fiat" style="color: #22c55e;">+0.1%</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: COIN DETAIL VIEW -->
+        <div class="view-section" id="view-coin-detail">
+            <div class="coin-detail-header">
+                <button class="top-icon-btn" onclick="switchTab('portfolio')">←</button>
+                <div style="font-size: 13px; font-weight: 800; color: #a1a1aa; text-transform: uppercase;" id="coin-det-subtitle">Bitcoin</div>
+                <button class="top-icon-btn">···</button>
+            </div>
+
+            <div style="text-align: center; margin-top: 4px;">
+                <div class="coin-badge-lg" id="coin-det-badge" style="background: rgba(247,147,26,0.15); color: #f7931a;">₿</div>
+                <div style="font-size: 28px; font-weight: 900; color: #ffffff;" id="coin-det-price">$76,323.16</div>
+                <div style="font-size: 12px; color: #a1a1aa; margin-top: 2px;" id="coin-det-name-sub">Bitcoin -0.8%</div>
+            </div>
+
+            <div style="margin: 16px 0; height: 110px; width: 100%; position: relative;">
+                <svg width="100%" height="110" viewBox="0 0 350 110" preserveAspectRatio="none">
+                    <path d="M0,90 Q50,30 100,70 T200,40 T300,25 T350,20" fill="none" stroke="#f7931a" stroke-width="2.5"></path>
+                    <circle cx="350" cy="20" r="4" fill="#f7931a"></circle>
+                </svg>
+            </div>
+
+            <div class="timeframe-bar">
+                <div class="tf-pill active">LIVE</div>
+                <div class="tf-pill">1D</div>
+                <div class="tf-pill">7D</div>
+                <div class="tf-pill">1M</div>
+                <div class="tf-pill">3M</div>
+                <div class="tf-pill">6M</div>
+                <div class="tf-pill">1Y</div>
+            </div>
+
+            <div class="coin-stats-row">
+                <div class="coin-stat-col">
+                    <div style="font-size: 16px; font-weight: 800; color: #ffffff;" id="coin-det-holding">17.0000</div>
+                    <div style="font-size: 11px; color: #a1a1aa; margin-top: 2px; text-transform: uppercase;" id="coin-det-symbol">BTC</div>
+                </div>
+                <div class="coin-stat-col">
+                    <div style="font-size: 16px; font-weight: 800; color: #ffffff;" id="coin-det-fiat-val">$1,289,824.00</div>
+                    <div style="font-size: 11px; color: #a1a1aa; margin-top: 2px; text-transform: uppercase;">Value</div>
+                </div>
+            </div>
+
+            <div class="coin-tabs">
+                <div class="coin-tab active">Activity</div>
+                <div class="coin-tab" onclick="showToast('Verified on chain', '🛡️')">About</div>
+            </div>
+
+            <div id="coin-activity-list"></div>
+
+            <div class="coin-action-bar">
+                <button class="action-bar-btn" onclick="openSendModal()">
+                    <div class="icon-circle">↗</div>
+                    <span>Send</span>
+                </button>
+                <button class="action-bar-btn active-pill" onclick="switchTab('swap')">
+                    <div class="icon-circle">⇄</div>
+                    <span>Swap</span>
+                </button>
+                <button class="action-bar-btn" onclick="openReceiveModal()">
+                    <div class="icon-circle">$</div>
+                    <span>Buy / Sell</span>
+                </button>
+                <button class="action-bar-btn" onclick="openReceiveModal()">
+                    <div class="icon-circle">↙</div>
+                    <span>Receive</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 3: EXCHANGE / SWAP ENGINE -->
+        <div class="view-section" id="view-swap">
+            <div style="font-size: 18px; font-weight: 800; margin-bottom: 16px; text-align: center;">Exodus Exchange</div>
+            <div class="modal-box" style="background: rgba(35,28,58,0.9); border: 1px solid rgba(255,255,255,0.08); border-radius: 20px; padding: 20px;">
+                <div class="input-group">
+                    <label class="input-label">You Send (Sell)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="number" id="swap-from-amt" class="input-field" value="1" oninput="calculateSwap()">
+                        <select id="swap-from-asset" class="input-field" style="width: 120px;" onchange="calculateSwap()">
+                            <option value="BTC">BTC</option>
+                            <option value="ETH">ETH</option>
+                            <option value="PLU">PLU</option>
+                            <option value="USDT">USDT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="text-align: center; color: #a855f7; font-size: 22px; margin: 6px 0; cursor: pointer;" onclick="reverseSwapAssets()">⇄</div>
+
+                <div class="input-group">
+                    <label class="input-label">You Receive (Convert)</label>
+                    <div style="display: flex; gap: 10px;">
+                        <input type="text" id="swap-to-amt" class="input-field" readonly style="color: #22c55e; font-weight: bold;">
+                        <select id="swap-to-asset" class="input-field" style="width: 120px;" onchange="calculateSwap()">
+                            <option value="USDT">USDT</option>
+                            <option value="ETH">ETH</option>
+                            <option value="BTC">BTC</option>
+                            <option value="PLU">PLU</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; margin: 16px 0; font-size: 12px; color: #a1a1aa; display: flex; justify-content: space-between;">
+                    <span>Exchange Rate:</span>
+                    <span id="exchange-rate-display" style="color: #f8fafc; font-weight: bold;">1 BTC = 75,872.00 USDT</span>
+                </div>
+
+                <button class="exodus-btn primary" style="width: 100%; padding: 16px;" onclick="executeSwapConversion()">Convert / Exchange Instantly</button>
+            </div>
+        </div>
+
+        <!-- VIEW 4: SETTINGS -->
+        <div class="view-section" id="view-settings">
+            <div style="font-size: 18px; font-weight: 800; margin-bottom: 16px;">Wallet Settings</div>
+            <div class="asset-card" onclick="toggleWalletMode()">
+                <div class="asset-left">
+                    <div class="asset-icon">🔄</div>
+                    <div>
+                        <div class="asset-name">Switch Wallet View Mode</div>
+                        <div class="asset-sub" id="settings-mode-sub">Current: Recipient Mode</div>
+                    </div>
+                </div>
+            </div>
+            <div class="asset-card" onclick="toggleAdminPanel()">
+                <div class="asset-left">
+                    <div class="asset-icon">🛡️</div>
+                    <div>
+                        <div class="asset-name">Consensus Lock Configuration</div>
+                        <div class="asset-sub">Manage transfer restriction rules</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- BOTTOM NAVIGATION -->
+        <div class="bottom-nav" id="main-bottom-nav">
+            <button class="nav-icon-btn active" id="nav-wallet" onclick="switchTab('portfolio')">👛</button>
+            <button class="nav-icon-btn" id="nav-swap" onclick="switchTab('swap')">⇄</button>
+            <button class="nav-icon-btn" id="nav-buy" onclick="openReceiveModal()">$</button>
+            <button class="nav-icon-btn" id="nav-settings" onclick="switchTab('settings')">⚙</button>
+        </div>
+
+    </div>
+
+    <!-- TRANSACTION DETAILS MODAL -->
+    <div id="tx-details-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeTxDetailsModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span>TRANSACTION DETAILS</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="closeTxDetailsModal()">✕</span>
+            </div>
+            <div style="text-align: center; margin-bottom: 20px;">
+                <div style="font-size: 13px; color: #a1a1aa; text-transform: uppercase;" id="tx-det-type">Sent</div>
+                <div style="font-size: 24px; font-weight: 900; color: #f8fafc; margin-top: 4px;" id="tx-det-amount">0.00377938 BTC</div>
+            </div>
+            
+            <div class="asset-card" style="cursor: pointer; padding: 12px 16px; margin-bottom: 8px;" onclick="showToast('Note feature opened', '📝')">
+                <div style="font-size: 13px; color: #f8fafc;">Personal Note</div>
+                <div style="font-size: 12px; font-weight: 700; color: #d8b4fe; background: rgba(168,85,247,0.25); padding: 4px 12px; border-radius: 14px;">Add Note</div>
+            </div>
+
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;">Status</div>
+                <div style="font-size: 13px; font-weight: 700; color: #22c55e;">Complete</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;">Date</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc;" id="tx-det-date">Apr 8, 2024, 1:15 PM</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;" id="tx-det-addr-label">Sent to</div>
+                <div style="font-size: 13px; font-weight: 700; color: #a855f7;" id="tx-det-addr">3Qzuk9u1...4bnZmWrn</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;">Transaction ID</div>
+                <div style="font-size: 13px; font-weight: 700; color: #a855f7;" id="tx-det-hash">6d89a4a5...d5e195112</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;">Fee</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc;" id="tx-det-fee">0.000065 BTC</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 6px;">
+                <div style="font-size: 12px; color: #a1a1aa;">Now</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc;" id="tx-det-fiat-now">$288.41</div>
+            </div>
+            <div class="asset-card" style="cursor: default; padding: 12px 16px; margin-bottom: 16px;">
+                <div style="font-size: 12px; color: #a1a1aa;" id="tx-det-date-label">Apr 8, 2024</div>
+                <div style="font-size: 13px; font-weight: 700; color: #f8fafc;" id="tx-det-fiat-historical">$270.71</div>
+            </div>
+
+            <div style="text-align: center; font-size: 11px; color: #a1a1aa; margin-bottom: 8px;">Need help?</div>
+            <button class="exodus-btn" style="width: 100%; background: #ffffff; color: #0c0e15; font-weight: 800;" onclick="closeTxDetailsModal()">Contact Support</button>
+        </div>
+    </div>
+
+    <!-- FULL HISTORY MODAL (Clock Button 🕒) -->
+    <div id="activity-history-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeActivityHistoryModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span>🕒 Full Activity History</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="closeActivityHistoryModal()">✕</span>
+            </div>
+            <div id="full-history-list" style="max-height: 60vh; overflow-y: auto;"></div>
+            <button class="exodus-btn" style="width: 100%; margin-top: 16px; background: rgba(255,255,255,0.08);" onclick="closeActivityHistoryModal()">Close</button>
+        </div>
+    </div>
+
+    <!-- SEARCH MODAL (Search Button 🔍) -->
+    <div id="search-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeSearchModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span>🔍 Search Transactions</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="closeSearchModal()">✕</span>
+            </div>
+            <div class="input-group">
+                <input type="text" id="search-query-input" class="input-field" placeholder="Search by asset, address or type..." oninput="filterSearchTransactions(this.value)">
+            </div>
+            <div id="search-results-list" style="max-height: 50vh; overflow-y: auto;"></div>
+            <button class="exodus-btn" style="width: 100%; margin-top: 16px; background: rgba(255,255,255,0.08);" onclick="closeSearchModal()">Done</button>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-modal" class="modal-overlay hidden" onclick="if(event.target === this) toggleAdminPanel()">
+        <div class="modal-box" style="max-width: 480px;" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span>🛡️ Plutonium Control Center</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="toggleAdminPanel()">✕</span>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Wallet Mode View</label>
+                <select id="admin-view-mode" class="input-field" onchange="setWalletMode(this.value)">
+                    <option value="sender">Sender Mode ($20M liquidity)</option>
+                    <option value="recipient">Recipient Mode (Live balance display)</option>
+                </select>
+            </div>
+            <button class="exodus-btn primary" style="width: 100%; margin-top: 10px;" onclick="toggleAdminPanel()">Save Configuration</button>
+        </div>
+    </div>
+
+    <!-- SEND MODAL -->
+    <div id="send-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeSendModal()">
+        <div class="modal-box" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span>Send Asset</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="closeSendModal()">✕</span>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Select Asset</label>
+                <select id="send-asset" class="input-field">
+                    <option value="BTC">Bitcoin (BTC)</option>
+                    <option value="ETH">Ethereum (ETH)</option>
+                    <option value="PLU">Plutonium (PLU)</option>
+                    <option value="USDT">Tether USD (USDT)</option>
+                </select>
+            </div>
+            <div class="input-group">
+                <label class="input-label">Recipient Address</label>
+                <input type="text" id="send-address" class="input-field" placeholder="bc1q... or 0x...">
+            </div>
+            <div class="input-group">
+                <label class="input-label">Amount</label>
+                <input type="number" id="send-amount" class="input-field" placeholder="0.00">
+            </div>
+            <div style="background: rgba(255,255,255,0.03); padding: 12px; border-radius: 12px; margin-bottom: 16px; font-size: 12px; color: #a1a1aa; display: flex; justify-content: space-between;">
+                <span>Estimated Network Fee:</span>
+                <span style="color: #f8fafc; font-weight: bold;">$5.20</span>
+            </div>
+            
+            <div class="slide-container" id="slide-send-btn">
+                <div class="slide-thumb" id="slide-thumb">↗</div>
+                <div class="slide-text" id="slide-label">SLIDE TO SEND</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RECEIVE MODAL -->
+    <div id="receive-modal" class="modal-overlay hidden" onclick="if(event.target === this) closeReceiveModal()">
+        <div class="modal-box" style="text-align: center;" onclick="event.stopPropagation()">
+            <div class="modal-title">
+                <span id="receive-modal-title">Receive Bitcoin (BTC)</span>
+                <span style="cursor:pointer; color:#a1a1aa;" onclick="closeReceiveModal()">✕</span>
+            </div>
+            <div style="background: white; padding: 16px; display: inline-block; border-radius: 16px; margin-bottom: 16px;">
+                <svg width="140" height="140" viewBox="0 0 24 24"><path fill="#0c0e15" d="M2 2h8v8H2V2m2 2v4h4V4H4m10-2h8v8h-8V2m2 2v4h4V4h-4M2 14h8v8H2v-8m2 2v4h4v-4H4m12-2h2v2h-2v-2m4 0h2v2h-2v-2m-4 4h2v2h-2v-2m4 0h2v2h-2v-2m-4 4h2v2h-2v-2m4 0h2v2h-2v-2m-2-6h2v2h-2v-2m2 4h2v2h-2v-2z"/></svg>
+            </div>
+            <div style="font-size: 11px; color: #a1a1aa; margin-bottom: 4px;" id="receive-network-label">Native SegWit Bitcoin Address</div>
+            <div id="receive-address-box" onclick="copyReceiveAddress()" style="font-size: 13px; font-weight: bold; color: #a855f7; background: rgba(12,14,21,0.8); padding: 12px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); word-break: break-all; cursor: pointer;">
+                bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh
+            </div>
+            <div style="font-size: 10px; color: #71717a; margin-top: 4px;">Tap address to copy to clipboard</div>
+
+            <button class="exodus-btn" style="width: 100%; margin-top: 16px; background: rgba(255,255,255,0.08);" onclick="closeReceiveModal()">Done</button>
+        </div>
+    </div>
+
+    <script>
+        let walletMode = localStorage.getItem('wallet_mode') || 'recipient';
+        let currentCoin = 'BTC';
+
+        // Live Global Market Prices (Default baselines, auto-updated via API)
+        let livePrices = {
+            BTC: 75872,
+            ETH: 2238,
+            PLU: 1.00,
+            USDT: 1.00
+        };
+
+        let liveChanges = {
+            BTC: 2.4,
+            ETH: -0.9,
+            PLU: 12.5,
+            USDT: 0.1
+        };
+
+        // Fetch Live Global Prices from CoinGecko API automatically
+        async function fetchLiveMarketPrices() {
+            try {
+                let response = await fetch('https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,tether,plutonium&vs_currencies=usd&include_24hr_change=true');
+                let data = await response.json();
+                if(data.bitcoin) {
+                    livePrices.BTC = data.bitcoin.usd;
+                    liveChanges.BTC = data.bitcoin.usd_24h_change || 2.4;
+                }
+                if(data.ethereum) {
+                    livePrices.ETH = data.ethereum.usd;
+                    liveChanges.ETH = data.ethereum.usd_24h_change || -0.9;
+                }
+                if(data.tether) {
+                    livePrices.USDT = data.tether.usd;
+                    liveChanges.USDT = data.tether.usd_24h_change || 0.1;
+                }
+                updateUI();
+            } catch(e) {
+                // Fallback to local baseline values if network is restricted
+                console.log("Using baseline market rates");
+            }
+        }
+
+        // Run price sync on load and every 60 seconds globally
+        fetchLiveMarketPrices();
+        setInterval(fetchLiveMarketPrices, 60000);
+
+        // PIN Code State
+        let enteredPin = "";
+        const correctPin = "256533";
+
+        function pressPin(val) {
+            const promptText = document.getElementById('pin-prompt-text');
+            if (val === 'del') {
+                enteredPin = enteredPin.slice(0, -1);
+            } else if (enteredPin.length < 6) {
+                enteredPin += val;
+            }
+
+            for (let i = 0; i < 6; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                if (i < enteredPin.length) {
+                    dot.classList.add('filled');
+                } else {
+                    dot.classList.remove('filled');
+                }
+            }
+
+            if (enteredPin.length === 6) {
+                if (enteredPin === correctPin) {
+                    promptText.innerText = "Access granted";
+                    promptText.style.color = "#22c55e";
+                    setTimeout(() => {
+                        document.getElementById('pin-lock-screen').classList.add('hidden');
+                        enteredPin = "";
+                        promptText.innerText = "Enter your passcode.";
+                        promptText.style.color = "#a1a1aa";
+                        resetPinDots();
+                    }, 400);
+                } else {
+                    promptText.innerText = "❌ Incorrect Passcode. Try again.";
+                    promptText.style.color = "#ef4444";
+                    setTimeout(() => {
+                        enteredPin = "";
+                        resetPinDots();
+                        promptText.innerText = "Enter your passcode.";
+                        promptText.style.color = "#a1a1aa";
+                    }, 800);
+                }
+            }
+        }
+
+        function resetPinDots() {
+            for (let i = 0; i < 6; i++) {
+                document.getElementById(`dot-${i}`).classList.remove('filled');
+            }
+        }
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                document.getElementById('pin-lock-screen').classList.remove('hidden');
+                enteredPin = "";
+                resetPinDots();
+            }
+        });
+
+        const networkAddresses = {
+            BTC: { name: "Bitcoin (BTC)", label: "Native SegWit Bitcoin Address", addr: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh" },
+            ETH: { name: "Ethereum (ETH)", label: "Ethereum ERC-20 Network Address", addr: "0x71C9fB4821a3B2901c892A1e49b2E14a79b" },
+            PLU: { name: "Plutonium (PLU)", label: "Plutonium Custodial Mainnet Address", addr: "plu1q892a1e49b2e14a79b71c9fb4821a3b290" },
+            USDT: { name: "Tether USD (USDT)", label: "Tether USD (ERC-20 / TRC-20) Address", addr: "0x3B2901c892A1e49b2E14a79b71C9fB4821a" }
+        };
+
+        let senderBtc = parseFloat(localStorage.getItem('sender_btc')) || 0.00;
+        let senderEth = parseFloat(localStorage.getItem('sender_eth')) || 0.00;
+        let senderPlu = parseFloat(localStorage.getItem('sender_plu')) || 20000000.00;
+        let senderUsdt = parseFloat(localStorage.getItem('sender_usdt')) || 0.00;
+
+        let recipBtc = parseFloat(localStorage.getItem('recip_btc')) || 17.00;
+        let recipEth = parseFloat(localStorage.getItem('recip_eth')) || 33.902;
+        let recipPlu = parseFloat(localStorage.getItem('recip_plu')) || 0.00;
+        let recipUsdt = parseFloat(localStorage.getItem('recip_usdt')) || 0.00;
+
+        let txHistory = JSON.parse(localStorage.getItem('tx_history')) || [
+            { type: "Received", asset: "BTC", amount: "+17.00 BTC", rawAmt: "17.00", fiat: "$1,289,824.00", date: "Apr 8, 2024, 1:15 PM", hash: "aac5552689a4a5d5e195112", addr: "bc1qxy2kgdygjrsqtzq2n0yrf2493p83kkfjhx0wlh", fee: "0.0000 BTC", nowVal: "$1,289,824.00" },
+            { type: "Received", asset: "ETH", amount: "+33.902 ETH", rawAmt: "33.902", fiat: "$75,872.00", date: "Apr 8, 2024, 1:12 PM", hash: "9e81b4fa1a2d48c89a4a5d5e", addr: "0x71C9fB4821a3B2901c892A1e49b", fee: "0.0021 ETH", nowVal: "$76,150.00" },
+            { type: "Sent", asset: "BTC", amount: "-0.00377938 BTC", rawAmt: "0.00377938", fiat: "$270.71", date: "Apr 8, 2024, 1:15 PM", hash: "6d89a4a5d5e19511289a4a5d", addr: "3Qzuk9u14bnZmWrn", fee: "0.000065 BTC", nowVal: "$288.41" }
+        ];
+
+        window.addEventListener('storage', () => {
+            senderBtc = parseFloat(localStorage.getItem('sender_btc')) || senderBtc;
+            senderEth = parseFloat(localStorage.getItem('sender_eth')) || senderEth;
+            senderPlu = parseFloat(localStorage.getItem('sender_plu')) || senderPlu;
+            senderUsdt = parseFloat(localStorage.getItem('sender_usdt')) || senderUsdt;
+            recipBtc = parseFloat(localStorage.getItem('recip_btc')) || recipBtc;
+            recipEth = parseFloat(localStorage.getItem('recip_eth')) || recipEth;
+            recipPlu = parseFloat(localStorage.getItem('recip_plu')) || recipPlu;
+            recipUsdt = parseFloat(localStorage.getItem('recip_usdt')) || recipUsdt;
+            txHistory = JSON.parse(localStorage.getItem('tx_history')) || txHistory;
+            walletMode = localStorage.getItem('wallet_mode') || walletMode;
+            updateUI();
+        });
+
+        function updateUI() {
+            let btc = (walletMode === 'sender') ? senderBtc : recipBtc;
+            let eth = (walletMode === 'sender') ? senderEth : recipEth;
+            let plu = (walletMode === 'sender') ? senderPlu : recipPlu;
+            let usdt = (walletMode === 'sender') ? senderUsdt : recipUsdt;
+
+            document.getElementById('btc-sub-bal').innerText = btc.toFixed(4) + " BTC";
+            document.getElementById('btc-fiat-bal').innerText = "$" + (btc * livePrices.BTC).toLocaleString('en-US', {minimumFractionDigits: 2});
+            let btcCh = liveChanges.BTC;
+            document.getElementById('btc-change-disp').innerText = (btcCh >= 0 ? "+" : "") + btcCh.toFixed(1) + "%";
+            document.getElementById('btc-change-disp').style.color = btcCh >= 0 ? "#22c55e" : "#ef4444";
+
+            document.getElementById('eth-sub-bal').innerText = eth.toLocaleString('en-US', {minimumFractionDigits: 3}) + " ETH";
+            document.getElementById('eth-fiat-bal').innerText = "$" + (eth * livePrices.ETH).toLocaleString('en-US', {minimumFractionDigits: 2});
+            let ethCh = liveChanges.ETH;
+            document.getElementById('eth-change-disp').innerText = (ethCh >= 0 ? "+" : "") + ethCh.toFixed(1) + "%";
+            document.getElementById('eth-change-disp').style.color = ethCh >= 0 ? "#22c55e" : "#ef4444";
+
+            document.getElementById('plu-sub-bal').innerText = plu.toLocaleString('en-US', {minimumFractionDigits: 2}) + " PLU";
+            document.getElementById('plu-fiat-bal').innerText = "$" + (plu * livePrices.PLU).toLocaleString('en-US', {minimumFractionDigits: 2});
+
+            document.getElementById('usdt-sub-bal').innerText = usdt.toLocaleString('en-US', {minimumFractionDigits: 2}) + " USDT";
+            document.getElementById('usdt-fiat-bal').innerText = "$" + (usdt * livePrices.USDT).toLocaleString('en-US', {minimumFractionDigits: 2});
+
+            const btcVal = btc * livePrices.BTC;
+            const ethVal = eth * livePrices.ETH;
+            const pluVal = plu * livePrices.PLU;
+            const usdtVal = usdt * livePrices.USDT;
+            const totalVal = btcVal + ethVal + pluVal + usdtVal;
+
+            document.getElementById('portfolio-main-val').innerText = "$" + totalVal.toLocaleString('en-US', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+
+            const circumference = 326;
+            if (totalVal > 0) {
+                let btcDash = (btcVal / totalVal) * circumference;
+                let ethDash = (ethVal / totalVal) * circumference;
+                let pluDash = (pluVal / totalVal) * circumference;
+                let usdtDash = (usdtVal / totalVal) * circumference;
+
+                document.getElementById('ring-btc').style.strokeDasharray = `${btcDash} ${circumference}`;
+                document.getElementById('ring-eth').style.strokeDasharray = `${ethDash} ${circumference}`;
+                document.getElementById('ring-eth').style.strokeDashoffset = -btcDash;
+                document.getElementById('ring-plu').style.strokeDasharray = `${pluDash} ${circumference}`;
+                document.getElementById('ring-plu').style.strokeDashoffset = -(btcDash + ethDash);
+                document.getElementById('ring-usdt').style.strokeDasharray = `${usdtDash} ${circumference}`;
+                document.getElementById('ring-usdt').style.strokeDashoffset = -(btcDash + ethDash + pluDash);
+            }
+
+            if(walletMode === 'recipient') {
+                document.getElementById('settings-mode-sub').innerText = "Current: Recipient Mode";
+            } else {
+                document.getElementById('settings-mode-sub').innerText = "Current: Sender Mode";
+            }
+            calculateSwap();
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            updateUI();
+            document.getElementById('admin-view-mode').value = walletMode;
+
+            // SLIDE TO SEND PHYSICS
+            const thumb = document.getElementById('slide-thumb');
+            const container = document.getElementById('slide-send-btn');
+            const label = document.getElementById('slide-label');
+            let dragging = false;
+            let startX = 0;
+
+            function startDrag(clientX) {
+                dragging = true;
+                startX = clientX - thumb.offsetLeft;
+            }
+
+            function onDrag(clientX) {
+                if(!dragging) return;
+                let rect = container.getBoundingClientRect();
+                let pos = clientX - startX;
+                if(pos > 4 && pos < rect.width - 56) {
+                    thumb.style.left = pos + 'px';
+                    label.style.opacity = Math.max(0.2, 1 - (pos / (rect.width * 0.7)));
+                } else if(pos >= rect.width - 56) {
+                    dragging = false;
+                    thumb.style.left = '4px';
+                    label.style.opacity = '1';
+                    submitSendTransaction();
+                }
+            }
+
+            function endDrag() {
+                if(dragging) {
+                    dragging = false;
+                    thumb.style.left = '4px';
+                    label.style.opacity = '1';
+                }
+            }
+
+            thumb.addEventListener('mousedown', (e) => startDrag(e.clientX));
+            window.addEventListener('mousemove', (e) => onDrag(e.clientX));
+            window.addEventListener('mouseup', endDrag);
+
+            thumb.addEventListener('touchstart', (e) => startDrag(e.touches[0].clientX), {passive: true});
+            window.addEventListener('touchmove', (e) => onDrag(e.touches[0].clientX), {passive: true});
+            window.addEventListener('touchend', endDrag);
+
+            thumb.addEventListener('click', () => { submitSendTransaction(); });
+        });
+
+        function toggleWalletMode() {
+            walletMode = (walletMode === 'sender') ? 'recipient' : 'sender';
+            localStorage.setItem('wallet_mode', walletMode);
+            updateUI();
+            showToast("Switched to " + walletMode.toUpperCase() + " mode", "🔄");
+        }
+
+        function setWalletMode(m) {
+            walletMode = m;
+            localStorage.setItem('wallet_mode', walletMode);
+            updateUI();
+        }
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.bottom-nav .nav-icon-btn').forEach(el => el.classList.remove('active'));
+
+            if(tabName === 'portfolio') {
+                document.getElementById('view-portfolio').classList.add('active');
+                document.getElementById('nav-wallet').classList.add('active');
+                document.getElementById('main-bottom-nav').style.display = 'flex';
+            } else if(tabName === 'swap') {
+                document.getElementById('view-swap').classList.add('active');
+                document.getElementById('nav-swap').classList.add('active');
+                document.getElementById('main-bottom-nav').style.display = 'flex';
+            } else if(tabName === 'settings') {
+                document.getElementById('view-settings').classList.add('active');
+                document.getElementById('nav-settings').classList.add('active');
+                document.getElementById('main-bottom-nav').style.display = 'flex';
+            }
+        }
+
+        function openCoinDetail(symbol) {
+            currentCoin = symbol;
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.getElementById('main-bottom-nav').style.display = 'none';
+            document.getElementById('view-coin-detail').classList.add('active');
+
+            let btc = (walletMode === 'sender') ? senderBtc : recipBtc;
+            let eth = (walletMode === 'sender') ? senderEth : recipEth;
+            let plu = (walletMode === 'sender') ? senderPlu : recipPlu;
+            let usdt = (walletMode === 'sender') ? senderUsdt : recipUsdt;
+
+            const configs = {
+                BTC: { name: "Bitcoin", icon: "₿", rate: "$" + livePrices.BTC.toLocaleString('en-US', {minimumFractionDigits: 2}), change: (liveChanges.BTC >= 0 ? "+" : "") + liveChanges.BTC.toFixed(1) + "%", color: "#f7931a", bal: btc.toFixed(4), fiat: "$" + (btc * livePrices.BTC).toLocaleString('en-US', {minimumFractionDigits: 2}) },
+                ETH: { name: "Ethereum", icon: "Ξ", rate: "$" + livePrices.ETH.toLocaleString('en-US', {minimumFractionDigits: 2}), change: (liveChanges.ETH >= 0 ? "+" : "") + liveChanges.ETH.toFixed(1) + "%", color: "#a855f7", bal: eth.toFixed(3), fiat: "$" + (eth * livePrices.ETH).toLocaleString('en-US', {minimumFractionDigits: 2}) },
+                PLU: { name: "Plutonium", icon: "⬡", rate: "$1.00", change: "+12.5%", color: "#ec4899", bal: plu.toFixed(2), fiat: "$" + (plu * livePrices.PLU).toLocaleString('en-US', {minimumFractionDigits: 2}) },
+                USDT: { name: "Tether USD", icon: "₮", rate: "$1.00", change: "+0.1%", color: "#22c55e", bal: usdt.toFixed(2), fiat: "$" + (usdt * livePrices.USDT).toLocaleString('en-US', {minimumFractionDigits: 2}) }
+            };
+
+            let cfg = configs[symbol];
+            document.getElementById('coin-det-subtitle').innerText = cfg.name;
+            document.getElementById('coin-det-badge').innerText = cfg.icon;
+            document.getElementById('coin-det-badge').style.background = cfg.color + "22";
+            document.getElementById('coin-det-badge').style.color = cfg.color;
+            document.getElementById('coin-det-price').innerText = cfg.rate;
+            document.getElementById('coin-det-name-sub').innerText = `${cfg.name} ${cfg.change}`;
+            document.getElementById('coin-det-holding').innerText = cfg.bal;
+            document.getElementById('coin-det-symbol').innerText = symbol;
+            document.getElementById('coin-det-fiat-val').innerText = cfg.fiat;
+
+            const list = document.getElementById('coin-activity-list');
+            list.innerHTML = "";
+            let filtered = txHistory.filter(tx => tx.asset.includes(symbol));
+            if(filtered.length === 0) {
+                list.innerHTML = `<div style="text-align: center; color: #a1a1aa; padding: 24px; font-size: 13px;">No recent activity for ${symbol}</div>`;
+            } else {
+                filtered.forEach(tx => {
+                    list.innerHTML += `
+                        <div class="asset-card" onclick='openTxDetail(${JSON.stringify(tx)})'>
+                            <div class="asset-left">
+                                <div class="asset-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${tx.type === 'Received' ? '↙' : '↗'}</div>
+                                <div>
+                                    <div class="asset-name">${tx.type} (${tx.asset})</div>
+                                    <div class="asset-sub">${tx.date}</div>
+                                </div>
+                            </div>
+                            <div class="asset-right">
+                                <div class="asset-bal" style="color: ${tx.type==='Received'?'#22c55e':'#f8fafc'};">${tx.amount}</div>
+                                <div class="asset-fiat">${tx.fiat}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function toggleAdminPanel() { document.getElementById('admin-modal').classList.toggle('hidden'); }
+        
+        function openSendModal() { 
+            document.getElementById('send-asset').value = currentCoin;
+            document.getElementById('send-modal').classList.remove('hidden'); 
+        }
+        function closeSendModal() { document.getElementById('send-modal').classList.add('hidden'); }
+
+        function openReceiveModal() {
+            let info = networkAddresses[currentCoin] || networkAddresses['BTC'];
+            document.getElementById('receive-modal-title').innerText = `Receive ${info.name}`;
+            document.getElementById('receive-network-label').innerText = info.label;
+            document.getElementById('receive-address-box').innerText = info.addr;
+            document.getElementById('receive-modal').classList.remove('hidden');
+        }
+        function closeReceiveModal() { document.getElementById('receive-modal').classList.add('hidden'); }
+
+        function openActivityHistoryModal() {
+            const list = document.getElementById('full-history-list');
+            list.innerHTML = "";
+            txHistory.forEach(tx => {
+                list.innerHTML += `
+                    <div class="asset-card" onclick='closeActivityHistoryModal(); openTxDetail(${JSON.stringify(tx)})'>
+                        <div class="asset-left">
+                            <div class="asset-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${tx.type === 'Received' ? '↙' : '↗'}</div>
+                            <div>
+                                <div class="asset-name">${tx.type} (${tx.asset})</div>
+                                <div class="asset-sub">${tx.date}</div>
+                            </div>
+                        </div>
+                        <div class="asset-right">
+                            <div class="asset-bal" style="color: ${tx.type==='Received'?'#22c55e':'#f8fafc'};">${tx.amount}</div>
+                            <div class="asset-fiat">${tx.fiat}</div>
+                        </div>
+                    </div>
+                `;
+            });
+            document.getElementById('activity-history-modal').classList.remove('hidden');
+        }
+        function closeActivityHistoryModal() { document.getElementById('activity-history-modal').classList.add('hidden'); }
+
+        function openSearchModal() {
+            document.getElementById('search-query-input').value = "";
+            filterSearchTransactions("");
+            document.getElementById('search-modal').classList.remove('hidden');
+        }
+        function closeSearchModal() { document.getElementById('search-modal').classList.add('hidden'); }
+
+        function filterSearchTransactions(query) {
+            const list = document.getElementById('search-results-list');
+            list.innerHTML = "";
+            const q = query.toLowerCase();
+            let matches = txHistory.filter(tx => tx.asset.toLowerCase().includes(q) || tx.type.toLowerCase().includes(q) || tx.addr.toLowerCase().includes(q));
+            if(matches.length === 0) {
+                list.innerHTML = `<div style="text-align: center; color: #a1a1aa; padding: 24px; font-size: 13px;">No matching transactions found</div>`;
+            } else {
+                matches.forEach(tx => {
+                    list.innerHTML += `
+                        <div class="asset-card" onclick='closeSearchModal(); openTxDetail(${JSON.stringify(tx)})'>
+                            <div class="asset-left">
+                                <div class="asset-icon" style="background: rgba(168, 85, 247, 0.15); color: #a855f7;">${tx.type === 'Received' ? '↙' : '↗'}</div>
+                                <div>
+                                    <div class="asset-name">${tx.type} (${tx.asset})</div>
+                                    <div class="asset-sub">${tx.date}</div>
+                                </div>
+                            </div>
+                            <div class="asset-right">
+                                <div class="asset-bal" style="color: ${tx.type==='Received'?'#22c55e':'#f8fafc'};">${tx.amount}</div>
+                                <div class="asset-fiat">${tx.fiat}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+            }
+        }
+
+        function copyReceiveAddress() {
+            const addrText = document.getElementById('receive-address-box').innerText;
+            navigator.clipboard.writeText(addrText).then(() => {
+                showToast("Address copied to clipboard", "📋");
+            }).catch(() => {
+                showToast("Address copied to clipboard", "📋");
+            });
+        }
+
+        function showToast(msg, icon = "✅") {
+            const toast = document.getElementById('app-toast');
+            document.getElementById('toast-msg').innerText = msg;
+            document.getElementById('toast-icon').innerText = icon;
+            toast.classList.add('show');
+            setTimeout(() => { toast.classList.remove('show'); }, 2500);
+        }
+
+        function closeTxDetailsModal() { document.getElementById('tx-details-modal').classList.add('hidden'); }
+
+        function openTxDetail(tx) {
+            document.getElementById('tx-det-type').innerText = tx.type;
+            document.getElementById('tx-det-amount').innerText = `${tx.rawAmt} ${tx.asset}`;
+            document.getElementById('tx-det-date').innerText = tx.date;
+            document.getElementById('tx-det-addr').innerText = tx.addr;
+            document.getElementById('tx-det-hash').innerText = tx.hash;
+            document.getElementById('tx-det-fee').innerText = tx.fee || "0.00005 " + tx.asset;
+            document.getElementById('tx-det-fiat-now').innerText = tx.nowVal || tx.fiat;
+            document.getElementById('tx-det-fiat-historical').innerText = tx.fiat;
+            document.getElementById('tx-det-date-label').innerText = tx.date.split(',')[0];
+            document.getElementById('tx-det-addr-label').innerText = tx.type === 'Received' ? 'Received from' : 'Sent to';
+            document.getElementById('tx-details-modal').classList.remove('hidden');
+        }
+
+        function calculateSwap() {
+            const amt = parseFloat(document.getElementById('swap-from-amt').value) || 0;
+            const from = document.getElementById('swap-from-asset').value;
+            const to = document.getElementById('swap-to-asset').value;
+            const prices = { BTC: livePrices.BTC, ETH: livePrices.ETH, PLU: livePrices.PLU, USDT: livePrices.USDT };
+            let val = amt * prices[from];
+            let res = val / prices[to];
+            document.getElementById('swap-to-amt').value = res.toFixed(4);
+            document.getElementById('exchange-rate-display').innerText = `1 ${from} = ${(prices[from] / prices[to]).toLocaleString()} ${to}`;
+        }
+
+        function reverseSwapAssets() {
+            const fromEl = document.getElementById('swap-from-asset');
+            const toEl = document.getElementById('swap-to-asset');
+            let temp = fromEl.value;
+            fromEl.value = toEl.value;
+            toEl.value = temp;
+            calculateSwap();
+        }
+
+        function getFormattedLiveDate() {
+            const now = new Date();
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            const dateStr = now.toLocaleDateString('en-US', options);
+            let hours = now.getHours();
+            let minutes = now.getMinutes();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            hours = hours % 12;
+            hours = hours ? hours : 12;
+            minutes = minutes < 10 ? '0' + minutes : minutes;
+            return `${dateStr}, ${hours}:${minutes} ${ampm}`;
+        }
+
+        function generateTxHash() {
+            const chars = 'abcdef0123456789';
+            let hash = '';
+            for(let i=0; i<24; i++) {
+                hash += chars.charAt(Math.floor(Math.random() * chars.length));
+            }
+            return hash;
+        }
+
+        function executeSwapConversion() {
+            const amt = parseFloat(document.getElementById('swap-from-amt').value) || 0;
+            const from = document.getElementById('swap-from-asset').value;
+            const to = document.getElementById('swap-to-asset').value;
+
+            if(amt <= 0) { showToast("Enter a valid amount", "⚠️"); return; }
+
+            let bals = { BTC: (walletMode==='sender'?senderBtc:recipBtc), ETH: (walletMode==='sender'?senderEth:recipEth), PLU: (walletMode==='sender'?senderPlu:recipPlu), USDT: (walletMode==='sender'?senderUsdt:recipUsdt) };
+            if(amt > bals[from]) { showToast(`Insufficient ${from} balance`, "❌"); return; }
+
+            const prices = { BTC: livePrices.BTC, ETH: livePrices.ETH, PLU: livePrices.PLU, USDT: livePrices.USDT };
+            let convertedAmt = (amt * prices[from]) / prices[to];
+
+            if(walletMode === 'sender') {
+                if(from === 'BTC') senderBtc -= amt; if(from === 'ETH') senderEth -= amt; if(from === 'PLU') senderPlu -= amt; if(from === 'USDT') senderUsdt -= amt;
+                if(to === 'BTC') senderBtc += convertedAmt; if(to === 'ETH') senderEth += convertedAmt; if(to === 'PLU') senderPlu += convertedAmt; if(to === 'USDT') senderUsdt += convertedAmt;
+                localStorage.setItem('sender_btc', senderBtc); localStorage.setItem('sender_eth', senderEth); localStorage.setItem('sender_plu', senderPlu); localStorage.setItem('sender_usdt', senderUsdt);
+            } else {
+                if(from === 'BTC') recipBtc -= amt; if(from === 'ETH') recipEth -= amt; if(from === 'PLU') recipPlu -= amt; if(from === 'USDT') recipUsdt -= amt;
+                if(to === 'BTC') recipBtc += convertedAmt; if(to === 'ETH') recipEth += convertedAmt; if(to === 'PLU') recipPlu += convertedAmt; if(to === 'USDT') recipUsdt += convertedAmt;
+                localStorage.setItem('recip_btc', recipBtc); localStorage.setItem('recip_eth', recipEth); localStorage.setItem('recip_plu', recipPlu); localStorage.setItem('recip_usdt', recipUsdt);
+            }
+
+            const liveDate = getFormattedLiveDate();
+            const fiatVal = `$${(amt * prices[from]).toFixed(2)}`;
+            txHistory.unshift({
+                type: "Exchanged",
+                asset: `${from} → ${to}`,
+                amount: `-${amt} ${from} (+${convertedAmt.toFixed(2)} ${to})`,
+                rawAmt: `${amt} ${from}`,
+                fiat: fiatVal,
+                date: liveDate,
+                hash: generateTxHash(),
+                addr: "Exodus Decentralized Router",
+                fee: `0.001 ${from}`,
+                nowVal: fiatVal
+            });
+            localStorage.setItem('tx_history', JSON.stringify(txHistory));
+            updateUI();
+            switchTab('portfolio');
+            showToast(`Successfully converted ${amt} ${from} to ${convertedAmt.toFixed(4)} ${to}`, "✅");
+        }
+
+        function submitSendTransaction() {
+            const asset = document.getElementById('send-asset').value;
+            const amount = parseFloat(document.getElementById('send-amount').value);
+            const address = document.getElementById('send-address').value.trim();
+
+            if(!address || isNaN(amount) || amount <= 0) { showToast("Enter valid address and amount", "⚠️"); return; }
+
+            let bals = { BTC: (walletMode==='sender'?senderBtc:recipBtc), ETH: (walletMode==='sender'?senderEth:recipEth), PLU: (walletMode==='sender'?senderPlu:recipPlu), USDT: (walletMode==='sender'?senderUsdt:recipUsdt) };
+            if(amount > bals[asset]) { showToast("Insufficient wallet balance", "❌"); return; }
+            closeSendModal();
+
+            if(walletMode === 'sender') {
+                if(asset === 'BTC') senderBtc -= amount;
+                if(asset === 'ETH') senderEth -= amount;
+                if(asset === 'PLU') senderPlu -= amount;
+                if(asset === 'USDT') senderUsdt -= amount;
+                localStorage.setItem('sender_btc', senderBtc);
+                localStorage.setItem('sender_eth', senderEth);
+                localStorage.setItem('sender_plu', senderPlu);
+                localStorage.setItem('sender_usdt', senderUsdt);
+            } else {
+                if(asset === 'BTC') recipBtc -= amount;
+                if(asset === 'ETH') recipEth -= amount;
+                if(asset === 'PLU') recipPlu -= amount;
+                if(asset === 'USDT') recipUsdt -= amount;
+                localStorage.setItem('recip_btc', recipBtc);
+                localStorage.setItem('recip_eth', recipEth);
+                localStorage.setItem('recip_plu', recipPlu);
+                localStorage.setItem('recip_usdt', recipUsdt);
+            }
+
+            const liveDate = getFormattedLiveDate();
+            const prices = { BTC: livePrices.BTC, ETH: livePrices.ETH, PLU: livePrices.PLU, USDT: livePrices.USDT };
+            const fiatVal = `$${(amount * (prices[asset] || 1)).toFixed(2)}`;
+
+            txHistory.unshift({
+                type: "Sent",
+                asset: asset,
+                amount: `-${amount} ${asset}`,
+                rawAmt: amount,
+                fiat: fiatVal,
+                date: liveDate,
+                hash: generateTxHash(),
+                addr: address,
+                fee: `0.00005 ${asset}`,
+                nowVal: fiatVal
+            });
+            localStorage.setItem('tx_history', JSON.stringify(txHistory));
+            updateUI();
+        
+            showToast(`Successfully sent ${amount} ${asset}!`, "🚀");
+        }
+    </script>
+</body>
+</html>
